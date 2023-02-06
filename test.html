@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="crossorigin=""/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" integrity="sha512-gc3xjCmIy673V6MyOAZhIW93xhM9ei1I+gLbmFjUHIjocENRsLX/QUE1htk5q1XV2D/iie/VQ8DXI6Vu8bexvQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
+    <script src="Leaflet.ImageOverlay.Rotated.js"></script>
+
+    <script src="leaflet.draw-src.js" integrity="sha512-czICF/Crp0B7QB13iQZG9bYUpd/P1Ona1NeZN52gYsoVFXIpakDmdOUepMCHCMBIBd9Ei5Mlg8Quy4e504IT5A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <title>Document</title>
+    <style>
+        .leaflet-control-attribution.leaflet-control
+        {
+            display: none;
+        }
+        .leaflet-div-icon
+        {
+            width: 10px !important;
+            height: 10px !important;
+            border-radius: 25% !important;
+            margin-left: -5px !important;
+            margin-top: -5px !important;
+            cursor: auto;
+        }
+        .leaflet-marker-icon.leaflet-mouse-marker.leaflet-zoom-animated.leaflet-interactive
+        {
+            cursor: crosshair !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="mx-auto mt-5 col-10" id="map" style="height: 600px"> </div>
+        <form class="mt-4" action="" id="form">
+            <div class="col-10 row mx-auto">
+                <div class="col">
+                    <input class="form-control " id="fileLink" type="text" placeholder="Ссылка на изображение" required>
+                </div>
+                <div class="col">
+                    <input class="form-control col-2" type="text" id="topleft" placeholder="Верхний левый угол" required>
+                </div>
+                <div class="col">
+                    <input class="form-control col-2" type="text" id="topright" placeholder="Нижний правый" required>
+                </div>
+                <div class="col">
+                    <input class="form-control col-2" type="text" id="bottomleft" placeholder="Нижний левый угол" required>
+                </div>
+                <div class="col">
+                    <button class="btn btn-primary" id="submitDown" type="submit">Загрузить</button>
+                </div>
+            </div>
+
+        </form>
+        
+        <div class="col-10 row my-3 mx-auto">
+            <div class="col-6">
+                <textarea class="form-control" placeholder="Координаты" id="floatingTextarea" style="height: 100px"></textarea>
+            </div>
+            <div class="col-6">
+                <textarea class="form-control" placeholder="Чистые-координаты" id="floatingTextarea2" style="height: 100px"></textarea>
+            </div>
+          </div>
+    </div>
+
+    <script>
+        var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        osm = L.tileLayer(osmUrl, { maxZoom: 18, attribution: osmAttrib }),
+        map = new L.Map('map', { center: new L.LatLng(54.675797, 55.906994), zoom: 13 }),
+        drawnItems = L.featureGroup().addTo(map);
+        osm.addTo(map),
+        map.addControl(new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems,
+                poly: {
+                    allowIntersection: false
+                }
+            },
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true
+                }
+            }
+        }));
+        
+        map.on(L.Draw.Event.CREATED, function (event) {
+            document.querySelector('#floatingTextarea').value = ''
+            document.querySelector('#floatingTextarea2').value = ''
+            coordString = ''
+            coordsClear = ''
+            var layer = event.layer;
+
+            for (let [index, val] of layer.editing.latlngs[0][0].entries())
+            {
+                coordString = coordString + Number(index+1)+'-точка :' + val.lat + ', ' + val.lng+'\r\n'
+                coordsClear = coordsClear + val.lat + ', ' + val.lng+'\r\n'
+            };
+            document.querySelector('#floatingTextarea').value = coordString
+            document.querySelector('#floatingTextarea2').value = coordsClear
+            drawnItems.addLayer(layer);
+        });
+    
+        function splidCoord(coord)
+        {
+            var re = /\s*,\s*/;
+            var coord = coord.split(re);
+            return coord;
+        }
+        function getFile() {
+            
+            var topleft = L.latLng(splidCoord(document.querySelector('#topleft').value)),
+            topright = L.latLng(splidCoord(document.querySelector('#topright').value)),
+            bottomleft = L.latLng(splidCoord(document.querySelector('#bottomleft').value));
+            L.imageOverlay.rotated(''+document.querySelector('#fileLink').value+'', topleft, topright, bottomleft, {
+                interactive: false,
+                opacity: 0.8,
+            }).addTo(map);
+        }
+        document.getElementById("form").addEventListener('submit', function(event){ event.preventDefault(); getFile() });
+        
+
+
+        
+    </script>
+</body>
+</html>
