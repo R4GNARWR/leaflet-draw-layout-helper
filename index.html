@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
     <script src="Leaflet.ImageOverlay.Rotated.js"></script>
-
+    
     <script src="leaflet.draw-src.js" integrity="sha512-czICF/Crp0B7QB13iQZG9bYUpd/P1Ona1NeZN52gYsoVFXIpakDmdOUepMCHCMBIBd9Ei5Mlg8Quy4e504IT5A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <title>Document</title>
     <style>
@@ -34,6 +34,22 @@
 </head>
 <body>
     <div class="container">
+        <div class="row">
+            <div class="col-10 mx-auto mt-5">
+                <div class="row">
+                    <label class="mb-1" for="">Центр карты</label>
+                    <div class="col-4">
+
+                        <input class="form-control" id="centerMap" type="text" required>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-primary" id="submitDown" onclick="setCenter()">Установить</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
         <div class="mx-auto mt-5 col-10" id="map" style="height: 600px"> </div>
         <form class="mt-4" action="" id="form">
             <div class="col-10 row mx-auto">
@@ -53,19 +69,25 @@
                     <button class="btn btn-primary" id="submitDown" type="submit">Загрузить</button>
                 </div>
             </div>
-
+            
         </form>
         
         <div class="col-10 row my-3 mx-auto">
-            <div class="col-6">
-                <textarea class="form-control" placeholder="Координаты" id="floatingTextarea" style="height: 100px"></textarea>
+            <div class="col-4">
+                <label for="floatingTextarea">Координаты преобразованные</label>
+                <textarea class="form-control" placeholder="" id="floatingTextarea" style="height: 100px"></textarea>
             </div>
-            <div class="col-6">
-                <textarea class="form-control" placeholder="Чистые-координаты" id="floatingTextarea2" style="height: 100px"></textarea>
+            <div class="col-4">
+                <label for="floatingTextarea">Координаты чистые</label>
+                <textarea class="form-control"  id="floatingTextarea2" style="height: 100px"></textarea>
             </div>
-          </div>
+            <div class="col-4">
+                <label for="floatingTextarea">Координаты точек</label>
+                <textarea class="form-control" id="floatingTextareaDots" style="height: 100px"></textarea>
+            </div>
+        </div>
     </div>
-
+    
     <script>
         var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -87,6 +109,12 @@
                 }
             }
         }));
+
+        function setCenter()
+        {
+            map.panTo(L.latLng(splidCoord(document.querySelector('#centerMap').value)));
+            map.setZoom(14)
+        }
         
         map.on(L.Draw.Event.CREATED, function (event) {
             document.querySelector('#floatingTextarea').value = ''
@@ -94,17 +122,24 @@
             coordString = ''
             coordsClear = ''
             var layer = event.layer;
-
             for (let [index, val] of layer.editing.latlngs[0][0].entries())
             {
-                coordString = coordString + Number(index+1)+'-точка :' + val.lat + ', ' + val.lng+'\r\n'
+                if (index+1 == layer.editing.latlngs[0][0].length)
+                {
+                    coordString = coordString + '[' + val.lat + ', '+ val.lng +']'
+                }
+                else
+                {
+                    coordString = coordString + '[' + val.lat + ', '+ val.lng +'], '
+                }
+                
                 coordsClear = coordsClear + val.lat + ', ' + val.lng+'\r\n'
             };
             document.querySelector('#floatingTextarea').value = coordString
             document.querySelector('#floatingTextarea2').value = coordsClear
             drawnItems.addLayer(layer);
         });
-    
+        
         function splidCoord(coord)
         {
             var re = /\s*,\s*/;
@@ -116,15 +151,72 @@
             var topleft = L.latLng(splidCoord(document.querySelector('#topleft').value)),
             topright = L.latLng(splidCoord(document.querySelector('#topright').value)),
             bottomleft = L.latLng(splidCoord(document.querySelector('#bottomleft').value));
-            L.imageOverlay.rotated(''+document.querySelector('#fileLink').value+'', topleft, topright, bottomleft, {
-                interactive: false,
+            
+            
+            var marker1 = L.marker(topleft, {draggable: true} ).addTo(map),
+            marker2 = L.marker(topright, {draggable: true} ).addTo(map),
+            marker3 = L.marker(bottomleft, {draggable: true} ).addTo(map);
+            
+            var markers = [
+            marker1.getLatLng(),
+            marker2.getLatLng(),
+            marker3.getLatLng()
+            ]
+            
+            
+            function stringifyMarkers(markers)
+            {
+                var markersString = ''
+                for (let [index, val] of markers.entries())
+                {
+                    if (index+1 == markers.length)
+                    {
+                        markersString = markersString + Number(index+1) + ' - '  + val.lat + ', '+ val.lng
+                    }
+                    else
+                    {
+                        markersString = markersString + Number(index+1) + ' - ' + val.lat + ', '+ val.lng +'\r\n'
+                    }
+                };
+                document.querySelector('#floatingTextareaDots').value = markersString
+            }
+            stringifyMarkers(markers)
+            
+
+            
+            var overlay = L.imageOverlay.rotated(''+document.querySelector('#fileLink').value+'', topleft, topright, bottomleft, {
+                interactive: true,
                 opacity: 0.8,
             }).addTo(map);
+            
+            function rewriteMarkers()
+            {
+                markers = [
+                marker1.getLatLng(),
+                marker2.getLatLng(),
+                marker3.getLatLng()
+                ]
+                stringifyMarkers(markers)
+            }
+            
+            function repositionImage() {
+                overlay.reposition(marker1.getLatLng(), marker2.getLatLng(), marker3.getLatLng());
+                rewriteMarkers()
+                
+            };
+            
+            marker1.on('drag dragend', repositionImage);
+            marker2.on('drag dragend', repositionImage);
+            marker3.on('drag dragend', repositionImage);
         }
+        
+        
+        
+        
         document.getElementById("form").addEventListener('submit', function(event){ event.preventDefault(); getFile() });
         
-
-
+        
+        
         
     </script>
 </body>
