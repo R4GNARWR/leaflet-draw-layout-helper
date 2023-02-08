@@ -115,10 +115,15 @@
             map.panTo(L.latLng(splidCoord(document.querySelector('#centerMap').value)));
             map.setZoom(14)
         }
-        
-        map.on(L.Draw.Event.CREATED, function (event) {
+        function layerPositionOutput(coordString, coordsClear)
+        {
             document.querySelector('#floatingTextarea').value = ''
             document.querySelector('#floatingTextarea2').value = ''
+            document.querySelector('#floatingTextarea').value = coordString
+            document.querySelector('#floatingTextarea2').value = coordsClear
+        }
+        map.on(L.Draw.Event.CREATED, function (event) {
+
             coordString = ''
             coordsClear = ''
             var layer = event.layer;
@@ -135,11 +140,28 @@
                 
                 coordsClear = coordsClear + val.lat + ', ' + val.lng+'\r\n'
             };
-            document.querySelector('#floatingTextarea').value = coordString
-            document.querySelector('#floatingTextarea2').value = coordsClear
+            layerPositionOutput(coordString, coordsClear)
+
             drawnItems.addLayer(layer);
         });
         
+        map.on(L.Draw.Event.EDITED, function (event)
+        {
+            console.log('Function working')
+            coordString = ''
+            coordsClear = ''
+            var layer = event.layers;
+            console.log()
+
+            layer._layers[Object.keys(layer._layers)[0]].editing.latlngs[0][0].forEach(element => {
+                coordString = coordString + '[' + element.lat + ', '+ element.lng +'], '
+                coordsClear = coordsClear + element.lat + ', ' + element.lng+'\r\n'
+            });
+
+            console.log(coordString, '    ' ,coordsClear)
+            layerPositionOutput(coordString, coordsClear)
+        })
+
         function splidCoord(coord)
         {
             var re = /\s*,\s*/;
