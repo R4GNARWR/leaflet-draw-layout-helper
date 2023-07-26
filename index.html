@@ -40,17 +40,17 @@
                 <div class="row">
                     <label class="mb-1" for="">Центр карты</label>
                     <div class="col-4">
-
+                        
                         <input class="form-control" id="centerMap" type="text" required>
                     </div>
                     <div class="col-4">
                         <button class="btn btn-primary" id="submitDown" onclick="setCenter()">Установить</button>
                     </div>
                 </div>
-
+                
             </div>
         </div>
-
+        
         <div class="mx-auto mt-5 col-10" id="map" style="height: 600px"> </div>
         <form class="mt-4" action="" id="form">
             <div class="col-10 row mx-auto">
@@ -90,7 +90,7 @@
     </div>
     
     <script>
-        var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        let osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         osm = L.tileLayer(osmUrl, { maxZoom: 18, attribution: osmAttrib }),
         map = new L.Map('map', { center: new L.LatLng(54.675797, 55.906994), zoom: 13 }),
@@ -110,7 +110,7 @@
                 }
             }
         }));
-
+        
         function setCenter()
         {
             map.panTo(L.latLng(splidCoord(document.querySelector('#centerMap').value)));
@@ -124,11 +124,12 @@
             document.querySelector('#floatingTextarea2').value = coordsClear
         }
         map.on(L.Draw.Event.CREATED, function (event) {
-
+            
             coordString = ''
             coordsClear = ''
-            var layer = event.layer;
-            for (let [index, val] of layer.editing.latlngs[0].entries())
+            let layer = event.layer;
+            if (layer instanceof L.Polygon) {
+                for (let [index, val] of layer.editing.latlngs[0][0].entries())
             {
                 if (index+1 == layer.editing.latlngs[0][0].length)
                 {
@@ -141,58 +142,93 @@
                 
                 coordsClear = coordsClear + val.lat + ', ' + val.lng+'\r\n'
             };
-            layerPositionOutput(coordString, coordsClear)
+            } else {
+                for (let [index, val] of layer.editing.latlngs[0].entries())
+            {
+                if (index+1 == layer.editing.latlngs[0][0].length)
+                {
+                    coordString = coordString + '[' + val.lat + ', '+ val.lng +']'
+                }
+                else
+                {
+                    coordString = coordString + '[' + val.lat + ', '+ val.lng +'], '
+                }
+                
+                coordsClear = coordsClear + val.lat + ', ' + val.lng+'\r\n'
+            };
+            }
 
+            console.log(layer)
+            layerPositionOutput(coordString, coordsClear)
+            
             drawnItems.addLayer(layer);
         });
         
         map.on(L.Draw.Event.EDITED, function (event)
         {
-            console.log('Function working')
             coordString = ''
             coordsClear = ''
-            var layer = event.layers;
-            console.log()
-
-            layer._layers[Object.keys(layer._layers)[0]].editing.latlngs[0][0].forEach(element => {
-                coordString = coordString + '[' + element.lat + ', '+ element.lng +'], '
-                coordsClear = coordsClear + element.lat + ', ' + element.lng+'\r\n'
-            });
-
-            console.log(coordString, '    ' ,coordsClear)
+            let layer = event.layers;
+            
+            if (layer instanceof L.Polygon) {
+                console.log(1)
+                layer._layers[Object.keys(layer._layers)[0]].editing.latlngs[0][0].forEach(element => {
+                    coordString = coordString + '[' + element.lat + ', '+ element.lng +'], '
+                    coordsClear = coordsClear + element.lat + ', ' + element.lng+'\r\n'
+                });
+            } else {
+                console.log(2)
+                layer._layers[Object.keys(layer._layers)[0]].editing.latlngs[0].forEach(element => {
+                    coordString = coordString + '[' + element.lat + ', '+ element.lng +'], '
+                    coordsClear = coordsClear + element.lat + ', ' + element.lng+'\r\n'
+                });
+            }
+            
+            console.log(layer)
             layerPositionOutput(coordString, coordsClear)
         })
-
+        
         function splidCoord(coord)
         {
-            var re = /\s*,\s*/;
-            var coord = coord.split(re);
-            return coord;
+            let re = /\s*,\s*/;
+            let splidetCoords = coord.split(re);
+            return splidetCoords;
         }
-        function getFile() {
+        
+        let imageOverlay;
+        let imageDots;
+        
+        function getFile(layer) {
             
-            var topleft = L.latLng(splidCoord(document.querySelector('#topleft').value)),
-            topright = L.latLng(splidCoord(document.querySelector('#topright').value)),
-            bottomleft = L.latLng(splidCoord(document.querySelector('#bottomleft').value));
+            let topleft = L.latLng(splidCoord(document.querySelector('#topleft').value));
+            let topright = L.latLng(splidCoord(document.querySelector('#topright').value))
+            let bottomleft = L.latLng(splidCoord(document.querySelector('#bottomleft').value));
             
             
-            var marker1 = L.marker(topleft, {draggable: true} ).addTo(map),
-            marker2 = L.marker(topright, {draggable: true} ).addTo(map),
-            marker3 = L.marker(bottomleft, {draggable: true} ).addTo(map);
+            let marker1 = L.marker(topleft, {draggable: true} ).addTo(map);
+            let marker2 = L.marker(topright, {draggable: true} ).addTo(map);
+            let marker3 = L.marker(bottomleft, {draggable: true} ).addTo(map);
             
-            var markers = [
+            imageDots = [
+            marker1,
+            marker2,
+            marker3
+            ]
+            
+            let markersLatLngs = [
             marker1.getLatLng(),
             marker2.getLatLng(),
             marker3.getLatLng()
-            ]
+            ];
             
             
-            function stringifyMarkers(markers)
+            function stringifyMarkers()
             {
-                var markersString = ''
-                for (let [index, val] of markers.entries())
+                
+                let markersString;
+                for (let [index, val] of markersLatLngs.entries())
                 {
-                    if (index+1 == markers.length)
+                    if (index+1 == markersLatLngs.length)
                     {
                         markersString = markersString + Number(index+1) + ' - '  + val.lat + ', '+ val.lng
                     }
@@ -203,28 +239,32 @@
                 };
                 document.querySelector('#floatingTextareaDots').value = markersString
             }
-            stringifyMarkers(markers)
             
-            map.fitBounds(markers);
             
-            var overlay = L.imageOverlay.rotated(''+document.querySelector('#fileLink').value+'', topleft, topright, bottomleft, {
+            stringifyMarkers();
+            map.fitBounds(markersLatLngs);
+            
+            
+            imageOverlay = L.imageOverlay.rotated(''+document.querySelector('#fileLink').value+'', topleft, topright, bottomleft, {
                 interactive: true,
                 opacity: 0.8,
             }).addTo(map);
             
+            
+            
             function rewriteMarkers()
             {
-                markers = [
+                markersLatLngs = [
                 marker1.getLatLng(),
                 marker2.getLatLng(),
                 marker3.getLatLng()
                 ]
-                stringifyMarkers(markers)
+                stringifyMarkers();
             }
             
             function repositionImage() {
-                overlay.reposition(marker1.getLatLng(), marker2.getLatLng(), marker3.getLatLng());
-                rewriteMarkers()
+                imageOverlay.reposition(marker1.getLatLng(), marker2.getLatLng(), marker3.getLatLng());
+                rewriteMarkers();
                 
             };
             
@@ -233,12 +273,34 @@
             marker3.on('drag dragend', repositionImage);
         }
         
+        function deleteLayout(layer, dots)
+        {
+            if(layer && map.hasLayer(layer))
+            {
+                map.removeLayer(layer);
+            }
+            if(dots)
+            {
+                dots.forEach(dot => {
+                    
+                    if(map.hasLayer(dot))
+                    {
+                        map.removeLayer(dot)
+                    }
+                    
+                });
+            }
+        }
         
         
         
-        document.getElementById("form").addEventListener('submit', function(event){ event.preventDefault(); getFile() });
         
-        
+        document.getElementById("form").addEventListener('submit', function(event)
+        {
+            event.preventDefault();
+            deleteLayout(imageOverlay, imageDots);
+            getFile(imageOverlay);
+        });
         
         
     </script>
